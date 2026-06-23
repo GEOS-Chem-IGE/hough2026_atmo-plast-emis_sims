@@ -1,0 +1,19 @@
+#===============================================================================
+# Conda environment specification for GEOS-Chem simulations
+# Note: use environment.yml to **exactly** reproduce the environment
+#===============================================================================
+
+name: hough2026_atmo-plast-emis_sims
+channels:
+  - conda-forge
+dependencies:
+  - cmake=3.30.3
+  - gcc=14.1.0
+  - gfortran=14.1.0
+  - git=2.46.2
+  - gxx=14.1.0
+  - hdf5=1.14.4[build="mpi*"]
+  - libnetcdf=4.9.2[build="mpi*"]
+  - make=4.4.1
+  - netcdf-fortran=4.6.1[build="mpi*"]
+  - pyyaml=6.0.2  # for download_data.py
