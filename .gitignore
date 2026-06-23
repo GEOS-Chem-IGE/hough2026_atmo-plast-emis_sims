@@ -1,0 +1,12 @@
+# Build files
+build/
+build_info/
+
+# Ignore gcclassic executable but keep symlinks to it
+simulations/setup/gcclassic
+
+# Simulation outputs
+*.nc
+*.nc4
+HEMCO.log
+geoschem_species_metadata.yml
