@@ -1,0 +1,3 @@
+[submodule "GCClassic"]
+	path = GCClassic
+	url = https://github.com/geoschem/GCClassic.git
