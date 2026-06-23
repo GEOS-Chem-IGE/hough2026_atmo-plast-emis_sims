@@ -1,0 +1,1013 @@
+From 9e71d1d78e8f89d70b3417b279bb311db82272a5 Mon Sep 17 00:00:00 2001
+From: Ian Hough <ian.hough@univ-grenoble-alpes.fr>
+Date: Wed, 24 Sep 2025 12:41:00 +0200
+Subject: [PATCH 1/2] Microplastic emissions module from Yanxu Zhang
+
+Simulates microplastic emissions from oceans, mismanaged plastic waste,
+agriculture, residences, and roads as described in Fu et al. (2023)
+https://doi.org/10.1016/j.oneear.2023.05.012.
+---
+ src/Extensions/CMakeLists.txt        |   2 +-
+ src/Extensions/hcox_driver_mod.F90   |  29 +
+ src/Extensions/hcox_plastics_mod.F90 | 846 +++++++++++++++++++++++++++
+ src/Extensions/hcox_state_mod.F90    |   2 +
+ 4 files changed, 878 insertions(+), 1 deletion(-)
+ create mode 100644 src/Extensions/hcox_plastics_mod.F90
+
+diff --git a/src/Extensions/CMakeLists.txt b/src/Extensions/CMakeLists.txt
+index 4fb4c75..144e3a2 100755
+--- a/src/Extensions/CMakeLists.txt
++++ b/src/Extensions/CMakeLists.txt
+@@ -16,6 +16,7 @@ add_library(HCOX STATIC EXCLUDE_FROM_ALL
+ 	hcox_lightnox_mod.F90
+ 	hcox_megan_mod.F90
+ 	hcox_paranox_mod.F90
++	hcox_plastics_mod.F90
+ 	hcox_seaflux_mod.F90
+ 	hcox_seasalt_mod.F90
+ 	hcox_soilnox_mod.F90
+@@ -32,4 +33,3 @@ target_link_libraries(HCOX
+ target_include_directories(HCOX
+ 	INTERFACE ${HEMCO_BINARY_DIR}/mod
+ )
+-
+diff --git a/src/Extensions/hcox_driver_mod.F90 b/src/Extensions/hcox_driver_mod.F90
+index 7f1b9c7..dea4558 100644
+--- a/src/Extensions/hcox_driver_mod.F90
++++ b/src/Extensions/hcox_driver_mod.F90
+@@ -102,6 +102,7 @@ CONTAINS
+     USE HCOX_SoilNox_Mod,       ONLY : HCOX_SoilNox_Init
+     USE HCOX_DustDead_Mod,      ONLY : HCOX_DustDead_Init
+     USE HCOX_DustGinoux_Mod,    ONLY : HCOX_DustGinoux_Init
++    USE HCOX_Plastics_Mod,      ONLY : HCOX_Plastics_Init   !yxzhang
+     USE HCOX_SeaSalt_Mod,       ONLY : HCOX_SeaSalt_Init
+     USE HCOX_GFED_Mod,          ONLY : HCOX_GFED_Init
+     USE HCOX_MEGAN_Mod,         ONLY : HCOX_MEGAN_Init
+@@ -272,6 +273,16 @@ CONTAINS
+           RETURN
+        ENDIF
+ 
++       !--------------------------------------------------------------------
++       ! Plastic emissions, yxzhang
++       !--------------------------------------------------------------------
++       CALL HCOX_Plastics_Init( HcoState, 'Plastics', ExtState, RC )
++       IF ( RC /= HCO_SUCCESS ) THEN
++          ErrMsg = 'Error encountered in "HCOX_Plastics_Init"!'
++          CALL HCO_ERROR( ErrMsg, RC, ThisLoc )
++          RETURN
++       ENDIF
++
+        !--------------------------------------------------------------------
+        ! SeaSalt aerosol extension
+        !--------------------------------------------------------------------
+@@ -416,6 +427,7 @@ CONTAINS
+     USE HCOX_SoilNox_Mod,       ONLY : HCOX_SoilNox_Run
+     USE HCOX_DustDead_Mod,      ONLY : HCOX_DustDead_Run
+     USE HCOX_DustGinoux_Mod,    ONLY : HCOX_DustGinoux_Run
++    USE HCOX_Plastics_Mod,      ONLY : HCOX_Plastics_Run  ! yxzhang
+     USE HCOX_SeaSalt_Mod,       ONLY : HCOX_SeaSalt_Run
+     USE HCOX_Megan_Mod,         ONLY : HCOX_Megan_Run
+     USE HCOX_GFED_Mod,          ONLY : HCOX_GFED_Run
+@@ -607,6 +619,18 @@ CONTAINS
+           ENDIF
+        ENDIF
+ 
++       !--------------------------------------------------------------------
++       ! Plastics emissions, yxzhang
++       !--------------------------------------------------------------------
++       IF ( ExtState%Plastics > 0 ) THEN
++          CALL HCOX_Plastics_Run( ExtState, HcoState, RC )
++          IF ( RC /= HCO_SUCCESS ) THEN
++             ErrMsg = 'Error encountered in "HCOX_Plastics_Run"!'
++             CALL HCO_ERROR( ErrMsg, RC, ThisLoc )
++             RETURN
++          ENDIF
++       ENDIF
++
+        !--------------------------------------------------------------------
+        ! Sea salt aerosols
+        !--------------------------------------------------------------------
+@@ -759,6 +783,7 @@ CONTAINS
+     USE HCOX_SoilNox_Mod,       ONLY : HCOX_SoilNox_Final
+     USE HCOX_DustDead_Mod,      ONLY : HCOX_DustDead_Final
+     USE HCOX_DustGinoux_Mod,    ONLY : HCOX_DustGinoux_Final
++    USE HCOX_Plastics_Mod,      ONLY : HCOX_Plastics_Final  !yxzhang
+     USE HCOX_SeaSalt_Mod,       ONLY : HCOX_SeaSalt_Final
+     USE HCOX_MEGAN_Mod,         ONLY : HCOX_MEGAN_Final
+     USE HCOX_GFED_Mod,          ONLY : HCOX_GFED_Final
+@@ -840,6 +865,10 @@ CONTAINS
+              CALL HCOX_DustGinoux_Final( ExtState )
+           ENDIF
+ 
++          IF ( ExtState%Plastics > 0 ) THEN  ! yxzhang
++             CALL HCOX_Plastics_Final( ExtState )
++          ENDIF
++
+           IF ( ExtState%SeaSalt > 0  ) THEN
+              CALL HCOX_SeaSalt_Final( ExtState )
+           ENDIF
+diff --git a/src/Extensions/hcox_plastics_mod.F90 b/src/Extensions/hcox_plastics_mod.F90
+new file mode 100644
+index 0000000..137dafb
+--- /dev/null
++++ b/src/Extensions/hcox_plastics_mod.F90
+@@ -0,0 +1,846 @@
++!------------------------------------------------------------------------------
++!                   Harmonized Emissions Component (HEMCO)                    !
++!------------------------------------------------------------------------------
++!BOP
++!
++! !MODULE: hemcox_plastics_mod.F90
++!
++! !DESCRIPTION: Plastic source function.  This subroutine updates
++! the surface mixing ratio of plastic aerosols for NPSTBIN size bins.  The
++! uplifting of plastic depends in space on the source function, and in time
++! and space on the soil moisture and surface wind speed (10 meters).  Plastic
++! is uplifted if the wind speed is greater than a threshold velocity which
++! is calculated with the formula of Marticorena et al.  (JGR, v.102,
++! pp 23277-23287, 1997).
++!\\
++!\\
++! This is a HEMCO extension module that uses many of the HEMCO core
++! utilities.
++!\\
++!\\
++! References:
++!
++! \begin{enumerate}
++! \end{enumerate}
++!
++! !AUTHOR:
++! Yanxu Zhang (zhangyx@nju.edu.cn)
++!
++! !INTERFACE:
++!
++MODULE HCOX_Plastics_Mod
++!
++! !USES:
++!
++  USE HCO_Error_Mod
++  USE HCO_Diagn_Mod
++  USE HCO_State_Mod,  ONLY : HCO_State
++  USE HCOX_State_Mod, ONLY : Ext_State
++
++  IMPLICIT NONE
++  PRIVATE
++!
++! !PUBLIC MEMBER FUNCTIONS:
++!
++  PUBLIC :: HcoX_Plastics_Run
++  PUBLIC :: HcoX_Plastics_Init
++  PUBLIC :: HcoX_Plastics_Final
++!
++! !REVISION HISTORY:
++! 13 Mar 2023 - Y. Zhang - Initial version
++! See https://github.com/geoschem/hemco for complete history
++!EOP
++!------------------------------------------------------------------------------
++!BOC
++!
++! !PRIVATE TYPES:
++!
++  TYPE :: MyInst
++
++    ! Quantities related to plastic bins
++    INTEGER              :: Instance
++    INTEGER              :: NBINS
++    INTEGER              :: ExtNr    = -1     ! Extension number  for Plastics
++    INTEGER, ALLOCATABLE :: HcoIDs    (:)     ! HEMCO species IDs for Plastics
++    REAL(hp), POINTER    :: FACT_MMPW (:)     ! size spectrum for MMPW source
++    REAL(hp), POINTER    :: FACT_AGRI (:)     ! size spectrum for AGRI source
++    REAL(hp), POINTER    :: PSTDEN    (:)     ! plastic density     [kg/m3]
++    REAL(hp), POINTER    :: PSTREFF   (:)     ! effective radius [um]
++    REAL(hp), POINTER    :: FLUX(:,:,:)       ! pre-term
++    REAL(hp), POINTER    :: FLUX1(:,:,:)      ! MMPW source
++    REAL(hp), POINTER    :: FLUX2(:,:,:)      ! AGRI source
++
++    ! Source functions (get from HEMCO core)
++    REAL(hp), POINTER    :: MMPW(:,:) => NULL()
++    REAL(hp), POINTER    :: FAgri(:,:) => NULL()
++
++    ! Transfer coefficient (grid-dependent)
++    REAL(dp)             :: K_MP_MMPW
++    REAL(dp)             :: K_MP_AGRI
++
++    TYPE(MyInst), POINTER :: NextInst => NULL()
++
++  END TYPE MyInst
++
++  ! Pointer to instances
++  TYPE(MyInst), POINTER  :: AllInst => NULL()
++
++CONTAINS
++!EOC
++!------------------------------------------------------------------------------
++!                   Harmonized Emissions Component (HEMCO)                    !
++!------------------------------------------------------------------------------
++!BOP
++!
++! !IROUTINE: HCOX_Plastics_Run
++!
++! !DESCRIPTION: Subroutine HcoX\_Plastics\_Run is the driver routine
++! for the plastic source function HEMCO extension.
++!\\
++!\\
++! !INTERFACE:
++!
++  SUBROUTINE HcoX_Plastics_Run( ExtState, HcoState, RC )
++!
++!   !USES:
++!
++    USE HCO_Calc_Mod,     ONLY : HCO_EvalFld
++    USE HCO_EmisList_Mod, ONLY : HCO_GetPtr
++    USE HCO_FluxArr_Mod,  ONLY : HCO_EmisAdd
++    USE HCO_Clock_Mod,    ONLY : HcoClock_First
++!
++!   !INPUT PARAMETERS:
++!
++    TYPE(Ext_State), POINTER        :: ExtState    ! Options for this ext
++!
++!   !INPUT/OUTPUT PARAMETERS:
++!
++    TYPE(HCO_State), POINTER        :: HcoState    ! HEMCO state object
++    INTEGER,         INTENT(INOUT)  :: RC          ! Success or failure?
++!
++!   !REMARKS:
++!
++!   PSTDEN    Plastic density                               (kg/m3)
++!   PSTREFF   Plastic radius                                (um)
++!   AD        Air mass for each grid box                    (kg)
++!   NTDT      Time step                                     (s)
++!   W10m      Velocity at the anemometer level (10meters)   (m/s)
++!   GWET      Surface wetness                               (-)
++!
++! !REVISION HISTORY:
++! 13 Mar 2023 - Y. Zhang - Initial version
++! See https://github.com/geoschem/hemco for complete history
++!EOP
++!------------------------------------------------------------------------------
++!BOC
++!
++!   !DEFINED PARAMETER:
++!
++    REAL*8, PARAMETER :: RHOA     = 1.25d-3
++
++!
++!   !LOCAL VARIABLES:
++!
++    ! SAVED scalars
++    ! LOGICAL, SAVE     :: FIRST = .TRUE.
++
++    ! Scalars
++    INTEGER           :: I, J, N, tmpID
++    LOGICAL           :: ERR
++    REAL*8            :: W10M,   DEN,    DIAM,   U_TS0, U_TS
++    REAL*8            :: SRCE_P, REYNOL, ALPHA,  BETA
++    REAL*8            :: GAMMA,  CW,     DTSRCE, A_M2,  G
++    REAL              :: DSRC
++    CHARACTER(LEN=63) :: MSG, LOC
++
++    ! Arrays
++    REAL*8            :: PST_EMI_TOTAL(HcoState%NX, HcoState%NY)
++
++    ! Pointers
++    TYPE(MyInst), POINTER :: Inst
++    REAL(hp),     POINTER :: Arr2D(:,:)
++
++    !=======================================================================
++    ! HCOX_Plastics_RUN begins here!
++    !=======================================================================
++    LOC = 'HCOX_Plastics_RUN (HCOX_PLASTICS_MOD.F90)'
++
++    ! Return if extension is disabled
++    IF ( ExtState%Plastics <= 0 ) RETURN
++
++    ! Enter
++    CALL HCO_ENTER( HcoState%Config%Err, LOC, RC )
++    IF ( RC /= HCO_SUCCESS ) THEN
++      CALL HCO_ERROR( 'ERROR 0', RC, THISLOC=LOC )
++      RETURN
++    ENDIF
++
++    ! Get instance
++    Inst => NULL()
++    CALL InstGet ( ExtState%Plastics, Inst, RC )
++    IF ( RC /= HCO_SUCCESS ) THEN
++      WRITE( MSG, * ) 'Cannot find Plastics instance Nr. ', ExtState%Plastics
++      CALL HCO_ERROR( MSG, RC )
++      RETURN
++    ENDIF
++
++    ! Set gravity at earth surface (cm/s^2)
++    G = HcoState%Phys%g0 * 1.0d2
++
++    ! Emission timestep [s]
++    DTSRCE = HcoState%TS_EMIS
++
++    ! Initialize total plastic emissions array [kg/m2/s]
++    PST_EMI_TOTAL = 0.0d0
++
++    ! Error check
++    ERR = .FALSE.
++
++    ! Init
++    Arr2D => NULL()
++
++    !=================================================================
++    ! Point to PST source functions
++    !=================================================================
++    ! MMPW
++    CALL HCO_EvalFld( HcoState, 'MMPW', Inst%MMPW, RC )
++    IF ( RC /= HCO_SUCCESS ) THEN
++      CALL HCO_ERROR( 'ERROR 1', RC, THISLOC=LOC )
++      RETURN
++    ENDIF
++
++    ! FAgri
++    CALL HCO_EvalFld( HcoState, 'AGRI', Inst%FAgri, RC )
++    IF ( RC /= HCO_SUCCESS ) THEN
++      CALL HCO_ERROR( 'ERROR 2', RC, THISLOC=LOC )
++      RETURN
++    ENDIF
++
++    !=================================================================
++    ! Compute plastic emisisons
++    !=================================================================
++!$OMP PARALLEL DO                                             &
++!$OMP DEFAULT( SHARED )                                       &
++!$OMP PRIVATE( I,      J,     N,      DEN,   DIAM           ) &
++!$OMP PRIVATE( REYNOL, ALPHA, BETA,   GAMMA,  U_TS0, U_TS   ) &
++!$OMP PRIVATE( CW,     W10M,  SRCE_P, RC                    ) &
++!$OMP SCHEDULE( DYNAMIC )
++    DO N = 1, Inst%NBINS
++
++      !====================================================================
++      ! Threshold velocity as a function of the plastic density and the
++      ! diameter from Bagnold (1941), valid for particles larger
++      ! than 10 um.
++      !
++      ! u_ts0 = 6.5*sqrt(pstden(n)*g0*2.*pstreff(n))
++      !
++      ! Threshold velocity from Marticorena and Bergametti
++      ! Convert units to fit dimensional parameters
++      !====================================================================
++      DEN    = Inst%PSTDEN(N) * 1.d-3                    ! [g/cm3]
++      DIAM   = 2d0 * Inst%PSTREFF(N) * 1.d2              ! [cm in diameter]
++      REYNOL = 1331.d0 * DIAM**(1.56d0) + 0.38d0         ! [Reynolds number]
++      ALPHA  = DEN * G * DIAM / RHOA
++      BETA   = 1d0 + ( 6.d-3 / ( DEN * G * DIAM**(2.5d0) ) )
++      GAMMA  = ( 1.928d0 * REYNOL**(0.092d0) ) - 1.d0
++
++      !====================================================================
++      ! I think the 129.d-5 is to put U_TS in m/sec instead of cm/sec
++      ! This is a threshold friction velocity!       from M&B
++      ! i.e. Ginoux uses the Gillette and Passi formulation
++      ! but has substituted Bagnold's Ut with M&B's U*t.
++      ! This appears to be a problem.  (tdf, 4/2/04)
++      !====================================================================
++
++      ! [m/s]
++      U_TS0  = 129.d-5 * SQRT( ALPHA ) * SQRT( BETA ) / SQRT( GAMMA )
++
++      ! Loop over grid boxes
++      DO J = 1, HcoState%NY
++
++        DO I = 1, HcoState%NX
++
++          ! Case of surface dry enough to erode
++          IF ( ExtState%GWETTOP%Arr%Val(I,J) < 0.2d0 ) THEN
++
++            U_TS = U_TS0 * ( &
++              1.2d0 + 0.2d0 * LOG10( &
++                MAX( 1.d-3, ExtState%GWETTOP%Arr%Val(I,J) ) &
++              ) &
++            )
++            U_TS = MAX( 0.d0, U_TS )
++
++          ELSE
++
++            ! Case of wet surface, no erosion
++            U_TS = 100.d0
++
++          ENDIF
++
++          ! 10m wind speed squared [m2/s2]
++          W10M = ExtState%U10M%Arr%Val(I,J)**2 &
++               + ExtState%V10M%Arr%Val(I,J)**2
++
++          ! Plastic source increment [kg/m2/s]
++          Inst%FLUX(I,J,N) = W10M * ( SQRT( W10M ) - U_TS )
++
++          ! Not less than zero
++          IF ( Inst%FLUX(I,J,N) < 0.d0 ) Inst%FLUX(I,J,N) = 0.d0
++
++          ! Increment total plastic emissions [kg/m2/s] (L. Zhang, 6/26/15)
++          PST_EMI_TOTAL(I,J) = PST_EMI_TOTAL(I,J) + Inst%FLUX(I,J,N)
++
++        ENDDO
++
++      ENDDO
++
++    ENDDO
++!$OMP END PARALLEL DO
++
++    ! Error check
++    IF ( ERR ) THEN
++      RC = HCO_FAIL
++      RETURN
++    ENDIF
++
++    ! Redistribute plastic emissions across bins, MMPW sources
++!$OMP PARALLEL DO        &
++!$OMP DEFAULT( SHARED )  &
++!$OMP PRIVATE( I, J, N ) &
++!$OMP SCHEDULE( DYNAMIC )
++    DO N=1,Inst%NBINS
++
++      DO J=1,HcoState%NY
++
++        DO I=1,HcoState%NX
++
++          Inst%FLUX1(I,J,N) = PST_EMI_TOTAL(I,J) * Inst%K_MP_MMPW &
++                              * Inst%MMPW(I,J) * Inst%FACT_MMPW(N)
++          Inst%FLUX2(I,J,N) = PST_EMI_TOTAL(I,J) * Inst%K_MP_AGRI &
++                              * Inst%FAgri(I,J) * Inst%FACT_AGRI(N)
++
++        ENDDO
++
++      ENDDO
++
++    ENDDO
++!$OMP END PARALLEL DO
++
++    !=======================================================================
++    ! PASS TO HEMCO STATE AND UPDATE DIAGNOSTICS
++    !=======================================================================
++    DO N = 1, Inst%NBINS
++
++      IF ( Inst%HcoIDs(N) > 0 ) THEN
++
++        ! Add flux to emission array
++        CALL HCO_EmisAdd( HcoState, Inst%FLUX1(:,:,N), &
++                          Inst%HcoIDs(N), RC, ExtNr=Inst%ExtNr, Cat = 2 )
++        CALL HCO_EmisAdd( HcoState, Inst%FLUX2(:,:,N), &
++                          Inst%HcoIDs(N), RC, ExtNr=Inst%ExtNr, Cat = 3 )
++
++        IF ( RC /= HCO_SUCCESS ) THEN
++          WRITE( MSG, * ) 'HCO_EmisAdd error: plastic bin ', N
++          CALL HCO_ERROR( MSG, RC )
++          RETURN
++        ENDIF
++
++      ENDIF
++
++    ENDDO
++
++    !=======================================================================
++    ! Cleanup & quit
++    !=======================================================================
++
++    ! Nullify pointers
++    Inst    => NULL()
++
++    ! Leave w/ success
++    CALL HCO_LEAVE( HcoState%Config%Err,RC )
++
++  END SUBROUTINE HcoX_Plastics_Run
++!EOC
++!------------------------------------------------------------------------------
++!                   Harmonized Emissions Component (HEMCO)                    !
++!------------------------------------------------------------------------------
++!BOP
++!
++! !IROUTINE: HCOX_Plastics_Init
++!
++! !DESCRIPTION: Subroutine HcoX\_Plastics\_Init initializes the HEMCO
++! PLASTICS extension.
++!\\
++!\\
++! !INTERFACE:
++!
++  SUBROUTINE HcoX_Plastics_Init( HcoState, ExtName, ExtState, RC )
++!
++!   !USES:
++!
++    USE HCO_ExtList_Mod, ONLY : GetExtNr, GetExtOpt
++    USE HCO_State_Mod,   ONLY : HCO_GetExtHcoID
++!
++!   !INPUT PARAMETERS:
++!
++    TYPE(HCO_State),  POINTER        :: HcoState   ! HEMCO State object
++    CHARACTER(LEN=*), INTENT(IN   )  :: ExtName    ! Extension name
++    TYPE(Ext_State),  POINTER        :: ExtState   ! Extension options
++!
++!   !INPUT/OUTPUT PARAMETERS:
++!
++    INTEGER,          INTENT(INOUT)  :: RC         ! Success or failure?
++!
++! !REVISION HISTORY:
++! 13 Mar 2023 - Y. Zhang - Initial version
++! See https://github.com/geoschem/hemco for complete history
++!EOP
++!------------------------------------------------------------------------------
++!BOC
++!
++!   !LOCAL VARIABLES:
++!
++    ! Scalars
++    INTEGER                        :: N, AS, nSpc, ExtNr
++    CHARACTER(LEN=255)             :: MSG, LOC
++    LOGICAL                        :: FOUND
++
++    ! Arrays
++    CHARACTER(LEN=31), ALLOCATABLE :: SpcNames(:)
++
++    ! Pointers
++    TYPE(MyInst), POINTER          :: Inst
++
++    !=======================================================================
++    ! HCOX_PLASTICS_INIT begins here!
++    !=======================================================================
++    LOC = 'HCOX_PLASTICS_INIT (HCOX_PLASTICS_MOD.F90)'
++
++    ! Extension Nr.
++    ExtNr = GetExtNr( HcoState%Config%ExtList, TRIM( ExtName ) )
++    IF ( ExtNr <= 0 ) RETURN
++
++    ! Create Instance
++    Inst => NULL()
++    CALL InstCreate ( ExtNr, ExtState%Plastics, Inst, RC )
++    IF ( RC /= HCO_SUCCESS ) THEN
++      CALL HCO_ERROR ( 'Cannot create Plastics instance', RC )
++      RETURN
++    ENDIF
++    ! Also fill Inst%ExtNr
++    Inst%ExtNr = ExtNr
++
++    ! Enter
++    CALL HCO_ENTER( HcoState%Config%Err, LOC, RC )
++    IF ( RC /= HCO_SUCCESS ) THEN
++      CALL HCO_ERROR( 'ERROR 4', RC, THISLOC=LOC )
++      RETURN
++    ENDIF
++
++    ! Get the actual number of plastic species defined for Plastics extension
++    CALL HCO_GetExtHcoID( HcoState, Inst%ExtNr, Inst%HcoIDs, &
++                          SpcNames, nSpc, RC )
++    IF ( RC /= HCO_SUCCESS ) THEN
++      CALL HCO_ERROR( 'ERROR 5', RC, THISLOC=LOC )
++      RETURN
++    ENDIF
++
++    ! Get number of PST bins
++    Inst%NBINS = nSpc
++
++    ! Allocate vectors holding bin-specific informations
++    ALLOCATE ( Inst%FACT_MMPW ( Inst%NBINS ) )
++    ALLOCATE ( Inst%FACT_AGRI ( Inst%NBINS ) )
++
++    ! Set scale factor: first try to read from configuration file.
++    CALL GetExtOpt( HcoState%Config, Inst%ExtNr, 'K_MP_MMPW', &
++                    OptValDp=Inst%K_MP_MMPW, Found=FOUND, RC=RC )
++    CALL GetExtOpt( HcoState%Config, Inst%ExtNr, 'PST1_MMPW_fact', &
++                    OptValDp=Inst%FACT_MMPW(1), Found=FOUND, RC=RC )
++    CALL GetExtOpt( HcoState%Config, Inst%ExtNr, 'PST2_MMPW_fact', &
++                    OptValDp=Inst%FACT_MMPW(2), Found=FOUND, RC=RC )
++    CALL GetExtOpt( HcoState%Config, Inst%ExtNr, 'PST3_MMPW_fact', &
++                    OptValDp=Inst%FACT_MMPW(3), Found=FOUND, RC=RC )
++    CALL GetExtOpt( HcoState%Config, Inst%ExtNr, 'PST4_MMPW_fact', &
++                    OptValDp=Inst%FACT_MMPW(4), Found=FOUND, RC=RC )
++    CALL GetExtOpt( HcoState%Config, Inst%ExtNr, 'PST5_MMPW_fact', &
++                    OptValDp=Inst%FACT_MMPW(5), Found=FOUND, RC=RC )
++    CALL GetExtOpt( HcoState%Config, Inst%ExtNr, 'PST6_MMPW_fact', &
++                    OptValDp=Inst%FACT_MMPW(6), Found=FOUND, RC=RC )
++    IF ( RC /= HCO_SUCCESS ) THEN
++      CALL HCO_ERROR( 'ERROR 6', RC, THISLOC=LOC )
++      RETURN
++    ENDIF
++
++    ! Set scale factor: first try to read from configuration file.
++    CALL GetExtOpt( HcoState%Config, Inst%ExtNr, 'K_MP_AGRI', &
++                    OptValDp=Inst%K_MP_AGRI, Found=FOUND, RC=RC )
++    CALL GetExtOpt( HcoState%Config, Inst%ExtNr, 'PST1_AGRI_fact', &
++                    OptValDp=Inst%FACT_AGRI(1), Found=FOUND, RC=RC )
++    CALL GetExtOpt( HcoState%Config, Inst%ExtNr, 'PST2_AGRI_fact', &
++                    OptValDp=Inst%FACT_AGRI(2), Found=FOUND, RC=RC )
++    CALL GetExtOpt( HcoState%Config, Inst%ExtNr, 'PST3_AGRI_fact', &
++                    OptValDp=Inst%FACT_AGRI(3), Found=FOUND, RC=RC )
++    CALL GetExtOpt( HcoState%Config, Inst%ExtNr, 'PST4_AGRI_fact', &
++                    OptValDp=Inst%FACT_AGRI(4), Found=FOUND, RC=RC )
++    CALL GetExtOpt( HcoState%Config, Inst%ExtNr, 'PST5_AGRI_fact', &
++                    OptValDp=Inst%FACT_AGRI(5), Found=FOUND, RC=RC )
++    CALL GetExtOpt( HcoState%Config, Inst%ExtNr, 'PST6_AGRI_fact', &
++                    OptValDp=Inst%FACT_AGRI(6), Found=FOUND, RC=RC )
++    IF ( RC /= HCO_SUCCESS ) THEN
++      CALL HCO_ERROR( 'ERROR 7', RC, THISLOC=LOC )
++      RETURN
++    ENDIF
++
++    ! Verbose mode
++    IF ( HcoState%amIRoot ) THEN
++
++      MSG = 'Use Plastic emissions (extension module)'
++      CALL HCO_MSG( HcoState%Config%Err,MSG )
++
++      MSG = 'Use the following species (Name: HcoID):'
++      CALL HCO_MSG( HcoState%Config%Err, MSG )
++
++      DO N = 1, nSpc
++        WRITE( MSG, * ) TRIM( SpcNames(N) ), ':', Inst%HcoIDs(N)
++        CALL HCO_MSG( HcoState%Config%Err, MSG )
++      ENDDO
++
++    ENDIF
++
++    ! Allocate vectors holding bin-specific informations
++    ALLOCATE ( Inst%PSTDEN (Inst%NBINS) )
++    ALLOCATE ( Inst%PSTREFF(Inst%NBINS) )
++    ALLOCATE ( Inst%FLUX   (HcoState%NX,HcoState%NY,Inst%NBINS) )
++    ALLOCATE ( Inst%FLUX1  (HcoState%NX,HcoState%NY,Inst%NBINS) )
++    ALLOCATE ( Inst%FLUX2  (HcoState%NX,HcoState%NY,Inst%NBINS) )
++
++    ! Allocate arrays
++    ALLOCATE ( Inst%MMPW ( HcoState%NX, HcoState%NY ), &
++               Inst%FAgri( HcoState%NX, HcoState%NY ), &
++               STAT = AS )
++    IF ( AS /= 0 ) THEN
++       CALL HCO_ERROR( 'Allocation error', RC )
++       RETURN
++    ENDIF
++
++    ! Init
++    Inst%FLUX  = 0.0_hp
++    Inst%FLUX1 = 0.0_hp
++    Inst%FLUX2 = 0.0_hp
++
++    !=======================================================================
++    ! Setup for simulations that use 6 plastic bins
++    !=======================================================================
++
++    ! Fill bin-specific information
++    IF ( Inst%NBINS == 6 ) THEN
++      ! to do: directly from species database
++      Inst%PSTDEN (1:Inst%NBINS) = &
++        (/ 1000.d0, 1000.d0, 1000.d0, 1000.d0, 1000.d0, 1000.d0 /)
++      Inst%PSTREFF(1:Inst%NBINS) = &
++        (/ 0.15d-6, 1.25d-6, 3.5d-6, 7.5d-6, 15d-6, 35d-6 /)
++    ENDIF
++
++    !=====================================================================
++    ! Activate fields in ExtState used by plastics
++    !=====================================================================
++
++    ! Activate met. fields required by this module
++    ExtState%U10M%DoUse    = .TRUE.
++    ExtState%V10M%DoUse    = .TRUE.
++    ExtState%GWETTOP%DoUse = .TRUE.
++
++    !=======================================================================
++    ! Leave w/ success
++    !=======================================================================
++    IF ( ALLOCATED( SpcNames ) ) DEALLOCATE( SpcNames )
++
++    ! Nullify pointers
++    Inst => NULL()
++
++    CALL HCO_LEAVE( HcoState%Config%Err,RC )
++
++  END SUBROUTINE HcoX_Plastics_Init
++!EOC
++!------------------------------------------------------------------------------
++!                   Harmonized Emissions Component (HEMCO)                    !
++!------------------------------------------------------------------------------
++!BOP
++!
++! !IROUTINE: HCOX_Plastics_Final
++!
++! !DESCRIPTION: Subroutine HcoX\_Plastics\_Final finalizes the HEMCO
++! PLASTICS extension.
++!\\
++!\\
++! !INTERFACE:
++!
++  SUBROUTINE HcoX_Plastics_Final( ExtState )
++!
++!   !INPUT PARAMETERS:
++!
++    TYPE(Ext_State), POINTER :: ExtState  ! Module options
++!
++!   !REVISION HISTORY:
++!   13 Mar 2023 - Y. Zhang - Initial version
++!   See https://github.com/geoschem/hemco for complete history
++!EOP
++!------------------------------------------------------------------------------
++!BOC
++
++    !=======================================================================
++    ! HCOX_PLASTICS_FINAL begins here!
++    !=======================================================================
++
++    CALL InstRemove ( ExtState%Plastics )
++
++  END SUBROUTINE HcoX_Plastics_Final
++!EOC
++!------------------------------------------------------------------------------
++!                   Harmonized Emissions Component (HEMCO)                    !
++!------------------------------------------------------------------------------
++!BOP
++!
++! !IROUTINE: InstGet
++!
++! !DESCRIPTION: Subroutine InstGet returns a poiner to the desired instance.
++!\\
++!\\
++! !INTERFACE:
++!
++  SUBROUTINE InstGet ( Instance, Inst, RC, PrevInst )
++!
++!   !INPUT PARAMETERS:
++!
++    INTEGER                         :: Instance
++    TYPE(MyInst), POINTER           :: Inst
++    INTEGER                         :: RC
++    TYPE(MyInst), POINTER, OPTIONAL :: PrevInst
++!
++! !REVISION HISTORY:
++! 13 Mar 2023 - Y. Zhang - Initial version
++! See https://github.com/geoschem/hemco for complete history
++!EOP
++!------------------------------------------------------------------------------
++!BOC
++    TYPE(MyInst), POINTER :: PrvInst
++
++    !=================================================================
++    ! InstGet begins here!
++    !=================================================================
++
++    ! Get instance. Also archive previous instance.
++    PrvInst => NULL()
++    Inst    => AllInst
++    DO WHILE ( ASSOCIATED( Inst ) )
++      IF ( Inst%Instance == Instance ) EXIT
++      PrvInst => Inst
++      Inst    => Inst%NextInst
++    END DO
++    IF ( .NOT. ASSOCIATED( Inst ) ) THEN
++      RC = HCO_FAIL
++      RETURN
++    ENDIF
++
++    ! Pass output arguments
++    IF ( PRESENT( PrevInst ) ) PrevInst => PrvInst
++
++    ! Cleanup & Return
++    PrvInst => NULL()
++    RC = HCO_SUCCESS
++
++  END SUBROUTINE InstGet
++!EOC
++!------------------------------------------------------------------------------
++!                   Harmonized Emissions Component (HEMCO)                    !
++!------------------------------------------------------------------------------
++!BOP
++!
++! !IROUTINE: InstCreate
++!
++! !DESCRIPTION: Subroutine InstCreate creates a new instance.
++!\\
++!\\
++! !INTERFACE:
++!
++  SUBROUTINE InstCreate ( ExtNr, Instance, Inst, RC )
++!
++!   !INPUT PARAMETERS:
++!
++    INTEGER,       INTENT(IN)       :: ExtNr
++!
++!   !OUTPUT PARAMETERS:
++!
++    INTEGER,       INTENT(  OUT)    :: Instance
++    TYPE(MyInst),  POINTER          :: Inst
++!
++!   !INPUT/OUTPUT PARAMETERS:
++!
++    INTEGER,       INTENT(INOUT)    :: RC
++!
++! !REVISION HISTORY:
++! 13 Mar 2023 - Y. Zhang - Initial version
++! See https://github.com/geoschem/hemco for complete history
++!EOP
++!------------------------------------------------------------------------------
++!BOC
++    TYPE(MyInst), POINTER          :: TmpInst
++    INTEGER                        :: nnInst
++
++    !=================================================================
++    ! InstCreate begins here!
++    !=================================================================
++
++    ! ----------------------------------------------------------------
++    ! Generic instance initialization
++    ! ----------------------------------------------------------------
++
++    ! Initialize
++    Inst => NULL()
++
++    ! Get number of already existing instances
++    TmpInst => AllInst
++    nnInst = 0
++    DO WHILE ( ASSOCIATED( TmpInst ) )
++       nnInst  =  nnInst + 1
++       TmpInst => TmpInst%NextInst
++    END DO
++
++    ! Create new instance
++    ALLOCATE( Inst )
++    Inst%Instance = nnInst + 1
++    Inst%ExtNr    = ExtNr
++
++    ! Attach to instance list
++    Inst%NextInst => AllInst
++    AllInst       => Inst
++
++    ! Update output instance
++    Instance = Inst%Instance
++
++    ! ----------------------------------------------------------------
++    ! Type specific initialization statements follow below
++    ! ----------------------------------------------------------------
++
++    ! Return w/ success
++    RC = HCO_SUCCESS
++
++  END SUBROUTINE InstCreate
++!EOC
++!------------------------------------------------------------------------------
++!                   Harmonized Emissions Component (HEMCO)                    !
++!------------------------------------------------------------------------------
++!BOP
++!BOP
++!
++! !IROUTINE: InstRemove
++!
++! !DESCRIPTION: Subroutine InstRemove creates a new instance.
++!\\
++!\\
++! !INTERFACE:
++!
++  SUBROUTINE InstRemove ( Instance )
++!
++!   !INPUT PARAMETERS:
++!
++    INTEGER                         :: Instance
++!
++! !REVISION HISTORY:
++! 13 Mar 2023 - Y. Zhang - Initial version
++! See https://github.com/geoschem/hemco for complete history
++!EOP
++!------------------------------------------------------------------------------
++!BOC
++    INTEGER               :: RC
++    TYPE(MyInst), POINTER :: PrevInst
++    TYPE(MyInst), POINTER :: Inst
++
++    !=================================================================
++    ! InstRemove begins here!
++    !=================================================================
++
++    ! Init
++    PrevInst => NULL()
++    Inst     => NULL()
++
++    ! Get instance. Also archive previous instance.
++    CALL InstGet ( Instance, Inst, RC, PrevInst=PrevInst )
++
++    ! Instance-specific deallocation
++    IF ( ASSOCIATED( Inst ) ) THEN
++
++      !---------------------------------------------------------------------
++      ! Deallocate fields of Inst before popping Inst off the list
++      ! in order to avoid memory leaks (Bob Yantosca, 17 Aug 2020)
++      !---------------------------------------------------------------------
++      IF ( ASSOCIATED( Inst%MMPW ) ) THEN
++        DEALLOCATE( Inst%MMPW )
++      ENDIF
++      Inst%MMPW => NULL()
++
++      IF ( ASSOCIATED( Inst%FAgri ) ) THEN
++        DEALLOCATE( Inst%FAgri )
++      ENDIF
++      Inst%FAgri => NULL()
++
++      IF ( ASSOCIATED( Inst%FACT_MMPW ) ) THEN
++        DEALLOCATE( Inst%FACT_MMPW )
++      ENDIf
++      Inst%FACT_MMPW => NULL()
++
++      IF ( ASSOCIATED( Inst%FACT_AGRI ) ) THEN
++        DEALLOCATE( Inst%FACT_AGRI )
++      ENDIf
++      Inst%FACT_AGRI => NULL()
++
++      IF ( ASSOCIATED( Inst%PSTDEN ) ) THEN
++        DEALLOCATE( Inst%PSTDEN   )
++      ENDIF
++      Inst%PSTDEN => NULL()
++
++      IF ( ASSOCIATED( Inst%PSTREFF ) ) THEN
++        DEALLOCATE( Inst%PSTREFF )
++      ENDIF
++      Inst%PSTREFF => NULL()
++
++      IF ( ASSOCIATED( Inst%FLUX ) ) THEN
++        DEALLOCATE( Inst%FLUX )
++      ENDIF
++      Inst%FLUX => NULL()
++
++      IF ( ASSOCIATED( Inst%FLUX1  ) ) THEN
++        DEALLOCATE( Inst%FLUX1 )
++      ENDIF
++      Inst%FLUX1   => NULL()
++
++      IF ( ASSOCIATED( Inst%FLUX2  ) ) THEN
++        DEALLOCATE( Inst%FLUX2 )
++      ENDIF
++      Inst%FLUX2   => NULL()
++
++      IF ( ALLOCATED ( Inst%HcoIDs ) ) THEN
++        DEALLOCATE( Inst%HcoIDs  )
++      ENDIF
++
++      !---------------------------------------------------------------------
++      ! Pop off instance from list
++      !---------------------------------------------------------------------
++      IF ( ASSOCIATED( PrevInst ) ) THEN
++        PrevInst%NextInst => Inst%NextInst
++      ELSE
++        AllInst => Inst%NextInst
++      ENDIF
++
++      DEALLOCATE( Inst )
++
++    ENDIF
++
++    ! Free pointers before exiting
++    PrevInst => NULL()
++    Inst     => NULL()
++
++   END SUBROUTINE InstRemove
++!EOC
++END MODULE HCOX_Plastics_Mod
+diff --git a/src/Extensions/hcox_state_mod.F90 b/src/Extensions/hcox_state_mod.F90
+index 944ecaf..7120311 100644
+--- a/src/Extensions/hcox_state_mod.F90
++++ b/src/Extensions/hcox_state_mod.F90
+@@ -102,6 +102,7 @@ MODULE HCOX_STATE_MOD
+      INTEGER                   :: DustDead       ! DEAD dust model
+      INTEGER                   :: DustGinoux     ! Ginoux dust emissions
+      INTEGER                   :: DustAlk        ! Dust alkalinity
++     INTEGER                   :: Plastics       ! Plastic emissions, yxzhang
+      INTEGER                   :: LightNOx       ! Lightning NOx
+      INTEGER                   :: ParaNOx        ! PARANOX ship emissions
+      INTEGER                   :: SoilNOx        ! Soil NOx emissions
+@@ -293,6 +294,7 @@ CONTAINS
+     ExtState%DustDead       = -1
+     ExtState%DustGinoux     = -1
+     ExtState%DustAlk        = -1
++    ExtState%Plastics       = -1  !yxzhang
+     ExtState%LightNOx       = -1
+     ExtState%ParaNOx        = -1
+     ExtState%SoilNOx        = -1
+-- 
+2.54.0
+
+
+From f8b8a82798b3db35c3e5a672c1c184432780877d Mon Sep 17 00:00:00 2001
+From: Ian Hough <ian.hough@univ-grenoble-alpes.fr>
+Date: Sat, 17 Jan 2026 15:46:49 +0100
+Subject: [PATCH 2/2] Fix size of microplastic tracer PST5
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Change effective radius from 15 µm to 17.5 µm (diameter 35 µm)
+---
+ src/Extensions/hcox_plastics_mod.F90 | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/Extensions/hcox_plastics_mod.F90 b/src/Extensions/hcox_plastics_mod.F90
+index 137dafb..4f00073 100644
+--- a/src/Extensions/hcox_plastics_mod.F90
++++ b/src/Extensions/hcox_plastics_mod.F90
+@@ -539,7 +539,7 @@ CONTAINS
+       Inst%PSTDEN (1:Inst%NBINS) = &
+         (/ 1000.d0, 1000.d0, 1000.d0, 1000.d0, 1000.d0, 1000.d0 /)
+       Inst%PSTREFF(1:Inst%NBINS) = &
+-        (/ 0.15d-6, 1.25d-6, 3.5d-6, 7.5d-6, 15d-6, 35d-6 /)
++        (/ 0.15d-6, 1.25d-6, 3.5d-6, 7.5d-6, 17.5d-6, 35d-6 /)
+     ENDIF
+ 
+     !=====================================================================
+-- 
+2.54.0
+
