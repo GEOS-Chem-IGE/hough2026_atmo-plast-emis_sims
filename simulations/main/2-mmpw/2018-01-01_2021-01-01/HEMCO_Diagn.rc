@@ -1,0 +1,52 @@
+#------------------------------------------------------------------------------
+#                  GEOS-Chem Global Chemical Transport Model                  !
+#------------------------------------------------------------------------------
+#BOP
+#
+# !MODULE: HEMCO_Diagn.rc
+#
+# !DESCRIPTION: Configuration file for netCDF diagnostic output from HEMCO.
+#\\
+#\\
+# !REMARKS:
+#  Customized for the trace metals simulation.
+#
+# !REVISION HISTORY:
+#  13 Feb 2018 - E. Lundgren - Initial version
+#EOP
+#------------------------------------------------------------------------------
+#BOC
+# Name    Spec ExtNr Cat Hier Dim OutUnit  LongName
+#
+# Plastics
+# EmisPST1_OCEN  PST1  0    1  -1  2  kg/m2/s  PST1_emission_flux_from_ocean
+# EmisPST2_OCEN  PST2  0    1  -1  2  kg/m2/s  PST2_emission_flux_from_ocean
+# EmisPST3_OCEN  PST3  0    1  -1  2  kg/m2/s  PST3_emission_flux_from_ocean
+# EmisPST4_OCEN  PST4  0    1  -1  2  kg/m2/s  PST4_emission_flux_from_ocean
+# EmisPST5_OCEN  PST5  0    1  -1  2  kg/m2/s  PST5_emission_flux_from_ocean
+# EmisPST6_OCEN  PST6  0    1  -1  2  kg/m2/s  PST6_emission_flux_from_ocean
+EmisPST1_MMPW  PST1  118  2  -1  2  kg/m2/s  PST1_emission_flux_from_MMPW
+EmisPST2_MMPW  PST2  118  2  -1  2  kg/m2/s  PST2_emission_flux_from_MMPW
+EmisPST3_MMPW  PST3  118  2  -1  2  kg/m2/s  PST3_emission_flux_from_MMPW
+EmisPST4_MMPW  PST4  118  2  -1  2  kg/m2/s  PST4_emission_flux_from_MMPW
+EmisPST5_MMPW  PST5  118  2  -1  2  kg/m2/s  PST5_emission_flux_from_MMPW
+EmisPST6_MMPW  PST6  118  2  -1  2  kg/m2/s  PST6_emission_flux_from_MMPW
+# EmisPST1_AGRI  PST1  118  3  -1  2  kg/m2/s  PST1_emission_flux_from_agriculture
+# EmisPST2_AGRI  PST2  118  3  -1  2  kg/m2/s  PST2_emission_flux_from_agriculture
+# EmisPST3_AGRI  PST3  118  3  -1  2  kg/m2/s  PST3_emission_flux_from_agriculture
+# EmisPST4_AGRI  PST4  118  3  -1  2  kg/m2/s  PST4_emission_flux_from_agriculture
+# EmisPST5_AGRI  PST5  118  3  -1  2  kg/m2/s  PST5_emission_flux_from_agriculture
+# EmisPST6_AGRI  PST6  118  3  -1  2  kg/m2/s  PST6_emission_flux_from_agriculture
+# EmisPST1_RESI  PST1  0    4  -1  2  kg/m2/s  PST1_emission_flux_from_residential
+# EmisPST2_RESI  PST2  0    4  -1  2  kg/m2/s  PST2_emission_flux_from_residential
+# EmisPST3_RESI  PST3  0    4  -1  2  kg/m2/s  PST3_emission_flux_from_residential
+# EmisPST4_RESI  PST4  0    4  -1  2  kg/m2/s  PST4_emission_flux_from_residential
+# EmisPST5_RESI  PST5  0    4  -1  2  kg/m2/s  PST5_emission_flux_from_residential
+# EmisPST6_RESI  PST6  0    4  -1  2  kg/m2/s  PST6_emission_flux_from_residential
+# EmisPST1_ROAD  PST1  0    5  -1  2  kg/m2/s  PST1_emission_flux_from_road
+# EmisPST2_ROAD  PST2  0    5  -1  2  kg/m2/s  PST2_emission_flux_from_road
+# EmisPST3_ROAD  PST3  0    5  -1  2  kg/m2/s  PST3_emission_flux_from_road
+# EmisPST4_ROAD  PST4  0    5  -1  2  kg/m2/s  PST4_emission_flux_from_road
+# EmisPST5_ROAD  PST5  0    5  -1  2  kg/m2/s  PST5_emission_flux_from_road
+# EmisPST6_ROAD  PST6  0    5  -1  2  kg/m2/s  PST6_emission_flux_from_road
+#EOC
