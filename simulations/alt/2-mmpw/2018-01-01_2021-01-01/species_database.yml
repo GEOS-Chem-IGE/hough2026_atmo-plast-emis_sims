@@ -1,0 +1,47 @@
+# GEOS-Chem Species Database
+# Core species only (neglecting microphysics)
+# NOTE: Anchors must be defined before any variables that reference them.
+PST_PROP: &PSTproperties
+  DD_DustDryDep: true
+  DD_F0: 0.0
+  DD_Hstar: 0.0
+  Density: 1000.0
+  Is_Advected: true
+  Is_Aerosol: true
+  Is_DryDep: true
+  Is_WetDep: true
+  WD_AerScavEff: 1.0
+  WD_KcScaleFac: [1.0, 1.0, 1.0]
+  WD_RainoutEff: [1.0, 1.0, 0.0]
+  WD_RainoutEff_Luo: [1.0, 0.1, 0.0]
+  MW_g: 29.0
+PST1:
+  << : *PSTproperties
+  FullName: Plastic aerosol, Reff = 0.15 microns
+  Radius: 1.5e-7
+  WD_CoarseAer: false
+PST2:
+  << : *PSTproperties
+  FullName: Plastic aerosol, Reff = 1.25 microns
+  Radius: 1.25e-6
+  WD_CoarseAer: false
+PST3:
+  << : *PSTproperties
+  FullName: Plastic aerosol, Reff = 3.5 microns
+  Radius: 3.5e-6
+  WD_CoarseAer: true
+PST4:
+  << : *PSTproperties
+  FullName: Plastic aerosol, Reff = 7.5 microns
+  Radius: 7.5e-6
+  WD_CoarseAer: true
+PST5:
+  << : *PSTproperties
+  FullName: Plastic aerosol, Reff = 17.5 microns
+  Radius: 1.75e-5
+  WD_CoarseAer: true
+PST6:
+  << : *PSTproperties
+  FullName: Plastic aerosol, Reff = 35 microns
+  Radius: 3.5e-5
+  WD_CoarseAer: true
