@@ -110,7 +110,7 @@ Contents
 
 ### GCClassic
 
-GEOS-Chem 14.1.1 model code, patched (see `HEMCO-plastics.patch`) to simulate emissions of microplastics to the atmosphere from oceans, mismanaged plastic waste, agriculture, residences, and roads.
+GEOS-Chem 14.1.1 model code
 
 ### outputs
 
