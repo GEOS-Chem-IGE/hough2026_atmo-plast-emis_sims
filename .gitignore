@@ -10,3 +10,6 @@ simulations/setup/gcclassic
 *.nc4
 HEMCO.log
 geoschem_species_metadata.yml
+
+# Misc
+*.zip
