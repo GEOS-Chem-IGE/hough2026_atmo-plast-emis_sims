@@ -11,5 +11,5 @@ simulations/setup/gcclassic
 HEMCO.log
 geoschem_species_metadata.yml
 
-# Misc
+# Data
 *.zip
