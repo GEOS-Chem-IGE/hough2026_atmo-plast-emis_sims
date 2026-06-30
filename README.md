@@ -1,15 +1,11 @@
 Simulate atmospheric microplastic cycling
 -----------------------------------------
 
+[![DOI](https://zenodo.org/badge/1277826521.svg)](https://zenodo.org/badge/latestdoi/1277826521)
+
 This repository contains code to simulate global atmospheric microplastic cycling for the paper "Reduced global atmospheric microplastic emissions from size-harmonized observations" (Hough et al., 2026).
 
-The raw outputs of these simulations are available at [doi:10.5281/zenodo.20847720](https://doi.org/10.5281/zenodo.20847720).
-
-Related code and data:
-
-- Code to size-harmonize observations and constrain the raw simulation outputs: TODO
-- Constrained simulation outputs: [doi:10.5281/zenodo.20922804](https://doi.org/10.5281/zenodo.20922804)
-- Code for the paper figures: TODO
+The raw outputs of these simulations are available at https://doi.org/10.5281/zenodo.20847720
 
 
 To reproduce
@@ -130,4 +126,4 @@ References
 
 Fu, Y., Pang, Q., Ga, S. L. Z., Wu, P., Wang, Y., Mao, M., Yuan, Z., Xu, X., Liu, K., Wang, X., Li, D., & Zhang, Y. (2023). Modeling atmospheric microplastic cycle by GEOS-Chem: An optimized estimation by a global dataset suggests likely 50 times lower ocean emissions. *One Earth*, *6*(6), 705–714. https://doi.org/10.1016/j.oneear.2023.05.012
 
-Hough, I., Angot, H., Price, R., Dobiasova, N., Segur, T., Jahangir, E., Zhang, Y., Voisin, D., Sonke, J.E., & Thomas, J.L. (2026) Reduced global atmospheric microplastic emissions from size-harmonized observations. TODO DOI URL
+Hough, I., Angot, H., Price, R., Dobiasova, N., Segur, T., Jahangir, E., Zhang, Y., Voisin, D., Sonke, J.E., & Thomas, J.L. (2026) Reduced global atmospheric microplastic emissions from size-harmonized observations.
