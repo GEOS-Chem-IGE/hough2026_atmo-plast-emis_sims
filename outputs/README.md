@@ -1,9 +1,9 @@
-Simulation outputs
-==================
+Simulated atmospheric microplastics from Hough et al. (2026)
+============================================================
 
-This directory contains the raw simulation outputs.
+This directory contains the raw outputs of the GEOS-Chem simulations of atmospheric microplastic emissions, transport, and deposition described in "Reduced global atmospheric microplastic emissions from size-harmonized observations" (Hough et al., 2026).
 
-These outputs are **not** constrained to match observations. The constrained outputs are available at https://doi.org/10.5281/zenodo.20922804.
+These outputs are **not** constrained to match observations. The constrained outputs are available at https://doi.org/10.5281/zenodo.20922803.
 
 
 Contents
@@ -22,3 +22,5 @@ References
 ----------
 
 Fu, Y., Pang, Q., Ga, S. L. Z., Wu, P., Wang, Y., Mao, M., Yuan, Z., Xu, X., Liu, K., Wang, X., Li, D., & Zhang, Y. (2023). Modeling atmospheric microplastic cycle by GEOS-Chem: An optimized estimation by a global dataset suggests likely 50 times lower ocean emissions. *One Earth*, *6*(6), 705–714. https://doi.org/10.1016/j.oneear.2023.05.012
+
+Hough, I., Angot, H., Price, R., Dobiasova, N., Segur, T., Jahangir, E., Zhang, Y., Voisin, D., Sonke, J.E., & Thomas, J.L. (2026) Reduced global atmospheric microplastic emissions from size-harmonized observations.

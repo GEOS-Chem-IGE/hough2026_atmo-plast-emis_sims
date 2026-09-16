@@ -1,7 +1,7 @@
 Simulate atmospheric microplastic cycling
------------------------------------------
+=========================================
 
-[![DOI](https://zenodo.org/badge/1277826521.svg)](https://zenodo.org/badge/latestdoi/1277826521)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21068954.svg)](https://doi.org/10.5281/zenodo.21068954)
 
 This repository contains code to simulate global atmospheric microplastic cycling for the paper "Reduced global atmospheric microplastic emissions from size-harmonized observations" (Hough et al., 2026).
 
