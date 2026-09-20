@@ -1,9 +1,12 @@
-Simulated atmospheric microplastics from Hough et al. (2026)
-============================================================
+Modeled atmospheric microplastics
+=================================
 
 This directory contains the raw outputs of the GEOS-Chem simulations of atmospheric microplastic emissions, transport, and deposition described in "Reduced global atmospheric microplastic emissions from size-harmonized observations" (Hough et al., 2026).
 
-These outputs are **not** constrained to match observations. The constrained outputs are available at https://doi.org/10.5281/zenodo.20922803.
+> [!NOTE]
+> These raw outputs have **not** been constrained to match observations.
+
+The outputs are archived at [DOI:[10.5281/zenodo.22925451](https://doi.org/10.5281/zenodo.22925451)]
 
 
 Contents

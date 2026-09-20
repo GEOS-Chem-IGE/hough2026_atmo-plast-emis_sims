@@ -1,23 +1,45 @@
-Simulate atmospheric microplastic cycling
-=========================================
+Simulations for "Reduced global atmospheric microplastic emissions from size-harmonized observations" (Hough et al., 2026)
+==========================================================================================================================
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21068954.svg)](https://doi.org/10.5281/zenodo.21068954)
 
 This repository contains code to simulate global atmospheric microplastic cycling for the paper "Reduced global atmospheric microplastic emissions from size-harmonized observations" (Hough et al., 2026).
 
-The raw outputs of these simulations are available at https://doi.org/10.5281/zenodo.20847720
-
 
 To reproduce
 ------------
 
-> [!Tip]
-> These instructions assume you are familiar with configuring and running GEOS-Chem simulations. Refer to the [GEOS-Chem user guide](https://geos-chem.readthedocs.io/en/14.1.1/) for help.
+> [!IMPORTANT]
+> These instructions assume that:
+> - You are familiar with configuring and running GEOS-Chem simulations, including downloading any standard input data needed for simulations. Refer to the [GEOS-Chem user guide](https://geos-chem.readthedocs.io/en/14.1.1/) for help.
+> - You are running the simulations on a system that uses the [OAR](https://oar.imag.fr/documentation) job scheduler. If this is not the case, you must adapt the commands / scripts (e.g. `oarsub -s ./run-build.sh`) for your system.
 
-### Clone this repository and its submodules
+### Get the code
+
+The easiest way to reproduce the simulations is to clone this repository and its submodules:
 
 ```bash
-git clone --recurse-submodules git@github.com:GEOS-Chem-IGE/hough2026_atmo-plast-emis_sims.git
+git clone --depth 1 --recurse-submodules --shallow-submodules git@github.com:GEOS-Chem-IGE/hough2026_atmo-plast-emis_sims.git
+```
+
+Alternatively, you can download the archives of:
+
+- The GCClassic v14.1.1 "superproject" wrapper: https://doi.org/10.5281/zenodo.7696651
+- The GEOS-Chem v14.1.1 model code: https://doi.org/10.5281/zenodo.7696632
+- The HEMCO v3.6.2 model code: https://doi.org/10.5281/zenodo.7692950
+
+You must organize the directory structure like this:
+
+```
+hough2026_atmo-plast-emis_sims
+├── GCClassic
+│   ├── ...
+│   ├── src
+│   │   ├── GEOS-Chem  # GEOS-Chem v14.1.1. model code
+│   │   ├── HEMCO      # HEMCO v3.6.2 model code
+│   │   └── ...
+│   └── ...
+└── ...
 ```
 
 ### Patch HEMCO to enable simulating microplastic emissions
@@ -29,7 +51,7 @@ git apply --directory=GCClassic/src/HEMCO HEMCO-plastics.patch
 ### Unzip the plastic emissions input data into the HEMCO subdirectory of your GEOS-Chem input data directory (`ExtData`)
 
 ```bash
-unzip plastics-input-data.zip -d "$GC_DATA_ROOT"/HEMCO
+unzip inputs/plastics-input-data.zip -d "$GC_DATA_ROOT"/HEMCO
 ```
 
 > [!TIP]
@@ -55,9 +77,6 @@ to the correct path for your system.
 
 ### Build the GEOS-Chem executable
 
-> [!NOTE]
-> Our computing system uses the [OAR](https://oar.imag.fr/documentation) job scheduler. You should adapt the following commands / scripts as needed for your system. For example, if your system does not use a job scheduler, you can execute the build script directly with `./run-build.sh` rather than using `oarsub -S ./run-build.sh` to submit it as a job to the OAR scheduler.
-
 ```bash
 cd simulations/setup
 oarsub -S ./run-build.sh
@@ -78,7 +97,7 @@ oarsub -S ./run-download.sh
 ### Run the *main* simulation
 
 > [!NOTE]
-> The path to the GEOS-Chem input data directory is hardcoded in each simulation's `geoschem_config.yml`, `HEMCO_Config.rc`, and `HEMCO_Config.rc.gmao_metfields` configuration files. You must edit these files and replace every occurence of `/summer/geoschem/COMMON/ExtData` with the path to your `ExtData` directory.
+> The path to the GEOS-Chem input data directory is hardcoded in each simulation's `geoschem_config.yml`, `HEMCO_Config.rc`, and `HEMCO_Config.rc.gmao_metfields` configuration files. You must edit these files and replace every occurence of `/summer/geoschem/COMMON/ExtData` with the path to your `ExtData` directory (stored in `$GC_DATA_ROOT`).
 
 The *main* simulation models atmospheric microplastic emissions with a power law particle size distribution. See the *main* simulation [README](simulations/main/README.md) for details.
 
@@ -103,22 +122,6 @@ oarsub -S ./run.sh
 The *alternate* simulation models atmospheric microplastic emissions using the same configuration as Fu et al. (2023). See the *alternate* simulation [README](simulations/alt/README.md) for details.
 
 Run the *alternate* simulation using the same procedure as for the main simulation.
-
-
-Contents
---------
-
-### [GCClassic/](GCClassic/)
-
-GEOS-Chem 14.1.1 model code
-
-### [outputs/](outputs/)
-
-Simulation outputs
-
-### [simulations/](simulations/)
-
-Simulation configurations
 
 
 References
