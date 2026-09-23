@@ -1,7 +1,7 @@
 Simulations for "Reduced global atmospheric microplastic emissions from size-harmonized observations" (Hough et al., 2026)
 ==========================================================================================================================
 
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21068954.svg)](https://doi.org/10.5281/zenodo.21068954)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22933613.svg)](https://doi.org/10.5281/zenodo.22933613)
 
 This repository contains code to simulate global atmospheric microplastic cycling for the paper "Reduced global atmospheric microplastic emissions from size-harmonized observations" (Hough et al., 2026).
 
@@ -19,7 +19,7 @@ To reproduce
 The easiest way to reproduce the simulations is to clone this repository and its submodules:
 
 ```bash
-git clone --depth 1 --recurse-submodules --shallow-submodules git@github.com:GEOS-Chem-IGE/hough2026_atmo-plast-emis_sims.git
+git clone --depth 1 --recurse-submodules --shallow-submodules https://github.com/GEOS-Chem-IGE/hough2026_atmo-plast-emis_sims.git
 ```
 
 Alternatively, you can download the archives of:
