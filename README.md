@@ -19,7 +19,7 @@ To reproduce
 The easiest way to reproduce the simulations is to clone this repository and its submodules:
 
 ```bash
-git clone --depth 1 --recurse-submodules --shallow-submodules https://github.com/GEOS-Chem-IGE/hough2026_atmo-plast-emis_sims.git
+git clone --branch v1.0.2 --depth 1 --recurse-submodules --shallow-submodules https://github.com/GEOS-Chem-IGE/hough2026_atmo-plast-emis_sims.git
 ```
 
 Alternatively, you can download the archives of:
