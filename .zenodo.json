@@ -33,11 +33,6 @@
       "resource_type": "publication"
     },
     {
-      "identifier": "https://github.com/GEOS-Chem-IGE/hough2026_atmo-plast-emis_sims/tree/v1.0.2",
-      "relation": "isDerivedFrom",
-      "resource_type": "software"
-    },
-    {
       "identifier": "https://doi.org/10.5281/zenodo.22925451",
       "relation": "isSourceOf",
       "resource_type": "dataset"

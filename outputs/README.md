@@ -6,7 +6,7 @@ This directory contains the raw outputs of the GEOS-Chem simulations of atmosphe
 > [!NOTE]
 > These raw outputs have **not** been constrained to match observations.
 
-The outputs are archived at [DOI:[10.5281/zenodo.22925451](https://doi.org/10.5281/zenodo.22925451)]
+The outputs are archived at https://doi.org/10.5281/zenodo.22925451
 
 
 Contents
