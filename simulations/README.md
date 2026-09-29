@@ -1,7 +1,7 @@
 Simulation configurations
 =========================
 
-This directory contains configurations for the GEOS-Chem simulations of atmospheric microplastic cycling. The outputs and restart files from these simulations are written to the [outputs/](/outputs/) directory via symlinks.
+This directory contains configurations for the GEOS-Chem simulations of atmospheric microplastic cycling for the paper "Reduced global atmospheric microplastic emissions from size-harmonized observations" (Hough et al., 2026). The outputs and restart files from these simulations are written to the [outputs/](/outputs/) directory via symlinks.
 
 
 Contents
